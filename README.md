@@ -47,8 +47,18 @@ pacientes    COLISION_SILENCIOSA    RC=1  dominio=8 = imagen=4 + rechazos=2 + si
     COLISION clave=jose-ramirez|7771234567 conservado=A-1 pisados=A-2
 ```
 
-The witness is the point: not "there were collisions", but **who survived and who
-was overwritten**, by row identifier.
+The witness is the point: not "there were collisions", but **who survived and who was
+overwritten**, by row identifier.
+
+To audit an export you already have, without writing a line of code:
+
+```console
+$ python bench/auditar_csv.py export.csv --columna titulo --clave slug
+$ python bench/auditar_csv.py export.csv --columna telefono --clave digitos10
+```
+
+The script prints the receipt as JSON and exits with its code, so it can gate a migration in a
+shell pipeline.
 
 ### Exit codes
 
@@ -88,6 +98,23 @@ verificar_transversal(permitidos, clave_fn)
 # {'transversal': False, 'permitidos': 5, 'imagenes': 3, 'nucleo': 2, 'colisiones': [...]}
 ```
 
+### Was it the projection, or was the row already repeated?
+
+The lost mass has two causes and they get repaired on **opposite sides** of the pipeline: a
+projection that folds two different raw values into one key is a code change; a row that already
+appeared in the export is an input change. Passing `crudo_fn` — the key *before* the projection —
+splits the bucket:
+
+```python
+recibo = auditar_mapeo(filas, clave_fn=slug_titulo, crudo_fn=lambda f: f["titulo"])
+recibo.colisiones_por_proyeccion   # 0   the projection lost nothing
+recibo.colisiones_por_repetido     # 29  the export carried 29 duplicate rows
+```
+
+Without `crudo_fn` both fields are `None`, never `0`: the split was not measured, and a bucket
+nobody measured is not an empty bucket. The mass still closes — `proyeccion + repetido ==
+masa_perdida` — because the distinction is a classification, not a fourth check.
+
 ## Why every bucket is counted twice
 
 A bucket defined by subtraction closes in the integers even when the counts are
@@ -111,16 +138,38 @@ nothing.
 
 ## Measured
 
+Not on invented data. Four real exports, read-only, no values reproduced:
+
+| dataset | key | domain | image | lost | by projection | by repeated row | rc |
+|---|---|---|---|---|---|---|---|
+| product photo manifest (86 rows) | `slug(titulo)` | 86 | 57 | 29 | **0** | **29** | 1 |
+| same manifest | `producto_id` | 86 | 57 | 29 | **0** | **29** | 1 |
+| business listings (13 rows) | `digitos(telefono)[-10:]` | 13 | 13 | 0 | 0 | 0 | **0** |
+| business listings (13 rows) | `zona` | 13 | 1 | 12 | 0 | 12 | 1 |
+
+The first two rows are the honest surprise, and the useful one: the receipt's first job was to
+refute **my choice of key**, not to find a defect in anyone's code. 57 distinct titles map to 57
+distinct slugs — the projection is injective on this data. The manifest has one row per *photo*,
+not per product, so `titulo` and `producto_id` are the wrong row identity and the 29 lost rows are
+literal duplicates. `colisiones_por_proyeccion == 0` says that in one number.
+
+The last row is the counter-example, and it refuted a claim I had written before measuring it: I
+expected `zona` to be a *label collapsing many values into one key*, and the receipt says
+otherwise — `proyeccion == 0`, `repetido == 12`. The column holds **one** distinct value across 13
+rows, so there was nothing to project: using it as a key would collapse the whole export into a
+single record, and every lost row is a repeat of the same string. A column with one value is not a
+key, and the split names the reason instead of leaving it to the reader.
+
 | what | value |
 |---|---|
-| tests | `19 passed` (`python -m pytest -q`) |
+| tests | `33 passed` (`python -m pytest -o addopts="" -q` — the bare `-q` is already in `addopts`, and doubling it suppresses the count) |
 | executable cases | 3 (patient import, catalogue sync by two projections, dropped-row write) |
 | collisions detected in the patient case | 2 of 8 rows, witnesses `A-1/A-2` and `A-4/A-5` |
-| production exports audited | **NO_MEDIDO** — this package has not yet been run over a client's real export |
+| production exports with client data audited | **NO_MEDIDO** |
 
-The last row is the honest one. The engine is deterministic and the law is checked
-by construction; the number of losses it finds in *your* data is a measurement
-nobody has made yet.
+The last row is the honest one. These four audits are catalogue and directory exports; a client
+migration (patients, customers, appointments) has still not been run through the engine, and the
+number of losses it would find in *your* data is a measurement nobody has made yet.
 
 ## Limits
 
