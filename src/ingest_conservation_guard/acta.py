@@ -15,6 +15,13 @@ Both ends of the act are digested with SHA-256, so the certificate names the
 bytes it audited and the image it produced. It carries no data values beyond the
 keys that collided, and the keys themselves can be withheld with
 ``--sin-claves`` when they are personal data.
+
+With ``--export`` the image is also written to disk and its bytes are digested
+(``salida.archivo`` + ``salida.sha256_archivo``). Without that pair the act
+digests an abstraction — the sorted key map — and no downstream act can ever
+cite it: its ``entrada.sha256`` is the digest of a *file*. An act whose output
+cannot be named by the next act is a step that cannot be chained, and a chain
+that cannot be checked is a migration nobody can certify.
 """
 from __future__ import annotations
 
@@ -110,9 +117,28 @@ def _verdadero(valor: Any) -> bool:
     return str(valor).strip().lower() not in ("", "0", "false", "no", "n", "")
 
 
+def _exportar(imagen: dict[str, str], ruta: Path) -> dict[str, Any]:
+    """Escribe la imagen como CSV y digiere los bytes que quedaron en disco.
+
+    Ordenada por clave para que dos corridas sobre las mismas filas produzcan el
+    mismo fichero: un digest solo sirve de costura si es reproducible. El digest
+    se lee del archivo, nunca se calcula sobre el texto que se pretendia escribir.
+    """
+    ruta.parent.mkdir(parents=True, exist_ok=True)
+    with ruta.open("w", encoding="utf-8", newline="") as fh:
+        escritor = csv.writer(fh, lineterminator="\n")
+        escritor.writerow(["clave", "testigo"])
+        escritor.writerows(sorted(imagen.items()))
+    return {"archivo": ruta.name, "sha256_archivo": sha256_de(ruta)}
+
+
 def acta(ruta: Path, clave: str, crudo: str | None = None,
          validar: str | None = None, con_claves: bool = True,
-         nombre_caso: str | None = None) -> dict[str, Any]:
+         nombre_caso: str | None = None,
+         exportar: Path | None = None) -> dict[str, Any]:
+    if exportar is not None and not con_claves:
+        raise ValueError("--export exige las claves: no se puede exportar la imagen "
+                         "y ocultarla en el mismo acto")
     registros = cargar(ruta)
     clave_fn = proyector(clave)
     crudo_fn = proyector(crudo) if crudo else None
@@ -170,6 +196,8 @@ def acta(ruta: Path, clave: str, crudo: str | None = None,
             {"clave": "<omitida>", "conservado": c["conservado"], "pisados": c["pisados"]}
             for c in d["colisiones"]],
     }
+    if exportar is not None:
+        documento["salida"].update(_exportar(imagen, exportar))
     if perdidas != 0:
         documento["notas"] = ["el residuo de la ecuacion no es cero: hay filas sin cubeta"]
     return documento
@@ -191,6 +219,9 @@ def resumen(d: dict[str, Any]) -> str:
         lineas.append(
             f"  ecuacion  {e['dominio']} = {e['imagen']} + {e['colisiones_por_proyeccion']}"
             f" + {e['colisiones_por_repetido']} + {e['rechazos']} + {e['sin_clave']}")
+    if d["salida"].get("archivo"):
+        lineas.append(f"  archivo   {d['salida']['archivo']}"
+                      f"  sha256={d['salida']['sha256_archivo'][:16]}...")
     lineas += [
         f"  perdidas  {d['perdidas_silenciosas']}",
         f"  salida    claves={d['salida']['claves']}  sha256={d['salida']['sha256'][:16]}...",

@@ -1,7 +1,7 @@
 {
   "schema": "ingest-conservation-guard/censo/1",
   "instrument": "ingest-conservation-guard",
-  "instrument_version": "0.4.2",
+  "instrument_version": "0.4.3",
   "measured_at": "2026-11-25",
   "status": "MEDIDO_EN_EXPORTACION_PUBLICA",
   "not_measured": "MEDIDO_EN_PRODUCCION: no client migration has been certified yet",

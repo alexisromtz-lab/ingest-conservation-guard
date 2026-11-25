@@ -274,6 +274,44 @@ The `replay-censo` job in `.github/workflows/ci.yml` runs it on every push, so t
 checked on a machine that has never seen mine. `tests/test_replay_censo.py` exercises the three
 offline verdicts against a tampered copy of the fixture.
 
+### Chaining two acts: the seam is a measurement
+
+An act digests the bytes it read and — with `--export` — the bytes it wrote. Without that second
+pair nothing downstream can ever cite the output: the next act's `entrada.sha256` is the digest of a
+*file*, and an in-memory map has none.
+
+```console
+$ python -m ingest_conservation_guard --receipt migracion.csv \
+      --clave telefono:digitos:ultimos10 --crudo telefono --export paso1.csv --json
+  "salida": {"archivo": "paso1.csv", "claves": 3,
+             "sha256": "8255a43e...", "sha256_archivo": "ede784ce..."}
+
+$ python -m ingest_conservation_guard --receipt paso1.csv --clave clave --crudo clave --json
+  "entrada": {"archivo": "paso1.csv", "filas": 3, "sha256": "ede784ce..."}
+  "ecuacion": {"dominio": 3, "imagen": 3, ...}
+```
+
+The export is written sorted by key, so two runs over the same rows produce the same file, and the
+digest is read back from the file that landed on disk rather than from the text that was meant to
+be written. `--export` together with `--sin-claves` is refused: the artifact contains the keys, and
+an act cannot publish and withhold them at once.
+
+Two independent measurements of the same seam, and they answer different questions:
+
+| seam | measurement | what it proves | what it cannot see |
+|---|---|---|---|
+| count | `imagen(1) == dominio(2)` | the second act received as many rows as the first kept | identity: rewrite one witness and the count still says 3 |
+| bytes | `sha256_archivo(1) == entrada.sha256(2)` | the second act read the artifact the first wrote | nothing about the rows themselves |
+
+Measured on the six-row fixture: `6 = 3 + 3` — three rows kept, three declared as collisions, zero
+silently lost — with **both** seams sealed. Then rewrite one witness inside `paso1.csv` and re-audit:
+the counts still say `3 -> 3`, and the digests disagree. That is the exact state a count-only
+checker calls conserved.
+
+`conservation-ledger` composes such receipts with `chain`, checks both measurements per seam and
+computes the composite equation by telescoping — `dominio(1) = imagen(n) + sum(restos)` — so a chain
+of conserving acts is judged as one pipeline and never as a list of green lights.
+
 ### Adopting it without PyPI
 
 `.pre-commit-hooks.yaml` is in the repository root. The hook audits **one declared input**, so it
@@ -282,7 +320,7 @@ does not take staged filenames — edit `args` to point at your export and decla
 ```yaml
 repos:
   - repo: https://github.com/alexisromtz-lab/ingest-conservation-guard
-    rev: v0.4.2
+    rev: v0.4.3
     hooks:
       - id: ingest-conservation-guard-receipt
         args: ["--receipt", "migraciones/clientes.csv", "--clave", "telefono:digitos:ultimos10",
@@ -312,6 +350,13 @@ had been altered. Both the certificate and the per-case documents now carry `ins
 `instrument_version`, stamped by the package itself. The census was re-run over the pinned 34 195-row
 export with `0.4.2` before its `instrument_version` was moved: every cell identical, which is the
 only thing that makes the new number a measurement instead of a wish.
+
+`0.4.3` makes an act chainable. Until now `salida` digested the image — a sorted in-memory key map
+— so no later act could cite it: its own `entrada.sha256` is the digest of a *file*, and those are
+two different subjects. `--export` writes the image as CSV and publishes `salida.archivo` +
+`salida.sha256_archivo`, read back from disk. An act that produced no artifact publishes neither
+key: `NO_MEDIDO`, never a zero. The census was re-run over the pinned 34 195-row export with `0.4.3`
+before `instrument_version` moved, and every cell reproduced.
 
 ## Limits
 

@@ -115,3 +115,55 @@ def test_el_acta_nombra_el_binario_que_la_escribio():
     documento = acta(FIXTURE, "telefono:digitos:ultimos10", "telefono")
     assert documento["instrument"] == "ingest-conservation-guard"
     assert documento["instrument_version"] == __version__
+
+
+def test_sin_export_la_salida_no_nombra_ningun_archivo():
+    """Sin artefacto la salida es una abstraccion: se declara, no se inventa."""
+    d = acta(FIXTURE, "telefono:digitos:ultimos10", "telefono")
+    assert "archivo" not in d["salida"]
+    assert "sha256_archivo" not in d["salida"]
+
+
+def test_el_export_digiere_los_bytes_que_quedaron_en_disco(tmp_path):
+    """La costura sólo existe si el digest es el del archivo, no el del mapa."""
+    uno = tmp_path / "paso1.csv"
+    dos = tmp_path / "paso1-otra-vez.csv"
+    d1 = acta(FIXTURE, "telefono:digitos:ultimos10", "telefono", exportar=uno)
+    d2 = acta(FIXTURE, "telefono:digitos:ultimos10", "telefono", exportar=dos)
+
+    assert d1["salida"]["archivo"] == "paso1.csv"
+    assert d1["salida"]["sha256_archivo"] == sha256_de(uno)
+    assert uno.read_bytes() == dos.read_bytes(), "dos corridas, un solo fichero"
+    assert d1["salida"]["sha256_archivo"] == d2["salida"]["sha256_archivo"]
+    filas = uno.read_text(encoding="utf-8").count("\n")
+    assert filas == d1["salida"]["claves"] + 1, "cabecera + una fila por clave"
+
+
+def test_el_export_importa_mas_no_cambia_el_acta(tmp_path):
+    """Exportar añade una costura; no mueve un solo sumando de la ecuacion."""
+    sin = acta(FIXTURE, "telefono:digitos:ultimos10", "telefono")
+    con = acta(FIXTURE, "telefono:digitos:ultimos10", "telefono", exportar=tmp_path / "x.csv")
+    assert sin["ecuacion"] == con["ecuacion"]
+    assert sin["cubetas"] == con["cubetas"]
+    assert sin["perdidas_silenciosas"] == con["perdidas_silenciosas"]
+    assert sin["salida"]["sha256"] == con["salida"]["sha256"]
+
+
+def test_exportar_y_ocultar_las_claves_es_un_acto_imposible(tmp_path):
+    with pytest.raises(ValueError, match="--export exige las claves"):
+        acta(FIXTURE, "telefono:digitos:ultimos10", "telefono",
+             con_claves=False, exportar=tmp_path / "y.csv")
+
+
+def test_la_salida_de_un_acto_es_la_entrada_del_siguiente(tmp_path):
+    """Dos actos encadenados: la costura se mide, no se supone."""
+    paso1 = tmp_path / "paso1.csv"
+    a = acta(FIXTURE, "telefono:digitos:ultimos10", "telefono", exportar=paso1)
+    b = acta(paso1, "clave", "clave")
+
+    assert b["entrada"]["sha256"] == a["salida"]["sha256_archivo"]
+    assert b["ecuacion"]["dominio"] == a["cubetas"]["imagen"] == 3
+    assert b["perdidas_silenciosas"] == 0
+    resto_a = sum(v for k, v in a["ecuacion"].items() if k not in ("dominio", "imagen"))
+    resto_b = sum(v for k, v in b["ecuacion"].items() if k not in ("dominio", "imagen"))
+    assert a["ecuacion"]["dominio"] == b["ecuacion"]["imagen"] + resto_a + resto_b

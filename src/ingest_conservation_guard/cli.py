@@ -53,13 +53,19 @@ def main(argv: list[str] | None = None) -> int:
                    help="columna booleana: las filas falsas cuentan como rechazos")
     p.add_argument("--sin-claves", action="store_true",
                    help="omite los valores de las claves que colisionaron (datos personales)")
+    p.add_argument("--export", metavar="ARCHIVO", type=pathlib.Path,
+                   help="escribe la imagen como CSV y digiere sus bytes: sin esto ningun "
+                        "acto posterior puede citar esta salida")
     args = p.parse_args(argv)
 
     if args.receipt:
         if not args.clave:
             p.error("--receipt exige --clave (que proyeccion se audita debe estar declarada)")
+        if args.export and args.sin_claves:
+            p.error("--export y --sin-claves no pueden convivir: el export contiene las claves")
         documento = acta(pathlib.Path(args.receipt), args.clave, args.crudo,
-                         args.validar, con_claves=not args.sin_claves)
+                         args.validar, con_claves=not args.sin_claves,
+                         exportar=args.export)
         if args.json:
             print(json.dumps(documento, indent=2, ensure_ascii=False, sort_keys=True))
         else:
