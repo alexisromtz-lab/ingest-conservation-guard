@@ -216,6 +216,39 @@ off), `slug`, `digitos`, `ultimos10`. A misspelt transform is a hard error, beca
 auditing a different projection than the one the certificate names is the very failure this package
 exists to catch, one level up.
 
+### Measured on a real export, not on a fixture
+
+The tables above are fixtures, because a certificate has to be cheap to reproduce. This one is
+34 195 rows of real public data, and the input digest below is the one the receipt itself prints
+([`censo.json`](censo.json) pins it; `tests/test_censo.py` keeps this table and that file in step).
+
+`world-cities.csv` from `datasets/world-cities` (branch `master`, retrieved 2026-11-25),
+34 195 rows, sha256 `9edb0db14c312fb27058d6fe9633a6904cc915163cff939db92553125c154d30`:
+
+| projection | raw key | domain | image | by projection | by repeated row | rejects | no key | silent losses | rc |
+|---|---|---|---|---|---|---|---|---|---|
+| `name:plano:lower` | `name` | 34 195 | 32 171 | **153** | **1 871** | 0 | 0 | 0 | 1 |
+| `geonameid` | — | 34 195 | 34 195 | — | — | 0 | 0 | 0 | 0 |
+
+Read the two cause columns separately, because they name different repairs:
+
+- **153 rows** are lost to the projection and would have survived an exact key: `Ābādeh`/`Abadeh`,
+  `Santa Bárbara`/`Santa Barbara`, `Belém`/`Belem`, `San José`/`San Jose`. Folding accents is a
+  decision the projection made; if the destination considers those different places, the projection
+  is wrong and the normaliser is where the loss was introduced.
+- **1 871 rows** repeat a raw value an earlier row already carried: `Victoria` names nine distinct
+  cities in this file, `Richmond` nine. No projection can separate them, because the export never
+  carried what distinguished them. The repair belongs upstream, in the export's key, not here.
+
+`--clave geonameid` conserves all 34 195 rows at RC 0 — an identity key has no kernel to fold, which
+is the control proving the engine is not simply always red. `--sin-claves` prints
+`COLISION  <omitida> conservado=Ābādeh pisados=Abadeh` and keeps the witnesses. Two consecutive runs
+produce byte-identical `entrada.sha256` and `salida.sha256`, so two receipts can be diffed.
+
+Status of this section: **`MEDIDO_EN_EXPORTACION_PUBLICA`**. It is not `MEDIDO_EN_PRODUCCION`: no
+client migration has been certified with this yet. The day one is, that export's digest and numbers
+replace these, and until then the distinction is stated rather than blurred.
+
 ### Adopting it without PyPI
 
 `.pre-commit-hooks.yaml` is in the repository root. The hook audits **one declared input**, so it
@@ -224,7 +257,7 @@ does not take staged filenames — edit `args` to point at your export and decla
 ```yaml
 repos:
   - repo: https://github.com/alexisromtz-lab/ingest-conservation-guard
-    rev: v0.4.0
+    rev: v0.4.1
     hooks:
       - id: ingest-conservation-guard-receipt
         args: ["--receipt", "migraciones/clientes.csv", "--clave", "telefono:digitos:ultimos10",
@@ -240,6 +273,12 @@ does not close.
 of lost mass into projection and repeated row), `.pre-commit-hooks.yaml`, and `tests/test_readme.py`,
 which recomputes the migration table and the per-case exit codes and fails when this file disagrees
 with the engine. The engine itself is unchanged: same buckets, same three codes, same supremum.
+
+`0.4.1` retires `produccion = NO_MEDIDO` where it can be retired. The receipt above has now run on
+a real 34 195-row public export, `censo.json` pins that file by SHA-256 with the exact commands, and
+`tests/test_censo.py` recomputes every cell — including the output digest — whenever the export is
+on disk. It is `MEDIDO_EN_EXPORTACION_PUBLICA`, not `MEDIDO_EN_PRODUCCION`: no client migration has
+been certified yet, and the file says so.
 
 ## Limits
 

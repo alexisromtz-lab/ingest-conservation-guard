@@ -1,0 +1,54 @@
+{
+  "schema": "ingest-conservation-guard/censo/1",
+  "instrument": "ingest-conservation-guard",
+  "instrument_version": "0.4.1",
+  "measured_at": "2026-11-25",
+  "status": "MEDIDO_EN_EXPORTACION_PUBLICA",
+  "not_measured": "MEDIDO_EN_PRODUCCION: no client migration has been certified yet",
+  "dataset": {
+    "name": "world-cities",
+    "source": "https://raw.githubusercontent.com/datasets/world-cities/master/data/world-cities.csv",
+    "retrieved": "2026-11-25",
+    "bytes": 1336699,
+    "sha256": "9edb0db14c312fb27058d6fe9633a6904cc915163cff939db92553125c154d30",
+    "rows": 34195,
+    "columns": [
+      "name",
+      "country",
+      "subcountry",
+      "geonameid"
+    ],
+    "note": "the HTTP ETag of that URL is not this digest; the digest above is the file's own content hash"
+  },
+  "reproduce": "ingest-conservation-guard --receipt world-cities.csv --clave <clave> [--crudo name] --json",
+  "rows": [
+    {
+      "projection": "name:plano:lower",
+      "raw_key": "name",
+      "domain": 34195,
+      "image": 32171,
+      "by_projection": 153,
+      "by_repeated_row": 1871,
+      "rejects": 0,
+      "no_key": 0,
+      "silent_losses": 0,
+      "rc": 1,
+      "output_sha256": "7772f383e2647f3ecc255355ba5108c46bcc9eb7c34c0d42426a03ed7f0fe7e6",
+      "state": "COLISION_SILENCIOSA"
+    },
+    {
+      "projection": "geonameid",
+      "raw_key": null,
+      "domain": 34195,
+      "image": 34195,
+      "by_projection": null,
+      "by_repeated_row": null,
+      "rejects": 0,
+      "no_key": 0,
+      "silent_losses": 0,
+      "rc": 0,
+      "output_sha256": "b181dc71edd82489a25f9d7b552e58d3ddbc8bca2df493d8c963a4c10ac63e6d",
+      "state": "CONSERVADO"
+    }
+  ]
+}

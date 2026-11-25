@@ -26,12 +26,15 @@ COLUMNAS = ["domain", "image", "by projection", "by repeated row",
 
 
 def _filas_migracion() -> list[tuple[str, str, list[str]]]:
+    """Only the fixture table: it sits directly under `## Migrations`, and the
+    tables inside its subsections are other subjects (a real export is read by
+    `tests/test_censo.py`)."""
     filas, dentro = [], False
     for linea in README.splitlines():
         if linea.startswith("## Migrations"):
             dentro = True
             continue
-        if dentro and linea.startswith("## "):
+        if dentro and linea.startswith(("## ", "### ")):
             break
         if dentro and linea.startswith("| `"):
             celdas = [c.strip().strip("`") for c in linea.strip().strip("|").split("|")]
