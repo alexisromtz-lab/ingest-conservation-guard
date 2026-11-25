@@ -249,6 +249,31 @@ Status of this section: **`MEDIDO_EN_EXPORTACION_PUBLICA`**. It is not `MEDIDO_E
 client migration has been certified with this yet. The day one is, that export's digest and numbers
 replace these, and until then the distinction is stated rather than blurred.
 
+Whoever holds the file can re-derive every cell above — including the output digest — with
+`bench/replay_censo.py`. It downloads the export, compares its SHA-256 with the pin **before**
+measuring anything, and then recomputes both rows:
+
+```console
+$ python bench/replay_censo.py
+export verificado: world-cities 1336699 B 9edb0db14c312fb2...
+  identico name:plano:lower: domain=34195 image=32171 by_projection=153 by_repeated_row=1871 ...
+  identico geonameid: domain=34195 image=34195 by_projection=None by_repeated_row=None ...
+REPLAY IDENTICO · 2 filas · instrumento 0.4.1 · estado MEDIDO_EN_EXPORTACION_PUBLICA
+```
+
+Four verdicts, and the ladder refuses to let a milder one hide a worse one:
+
+| code | meaning | why it is not the other one |
+|---|---|---|
+| `0` | every cell reproduced | the pin is still true |
+| `1` | a cell did not reproduce | the code moved or the row is wrong: a proven defect |
+| `2` | the export could not be obtained | `NO_MEDIDO`, and it never masks a `1` |
+| `4` | the bytes are not the pinned export | nothing measured from them would mean anything |
+
+The `replay-censo` job in `.github/workflows/ci.yml` runs it on every push, so the table above is
+checked on a machine that has never seen mine. `tests/test_replay_censo.py` exercises the three
+offline verdicts against a tampered copy of the fixture.
+
 ### Adopting it without PyPI
 
 `.pre-commit-hooks.yaml` is in the repository root. The hook audits **one declared input**, so it

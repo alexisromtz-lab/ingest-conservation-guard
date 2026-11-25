@@ -34,3 +34,22 @@ jobs:
         run: |
           if python -m ingest_conservation_guard ruptura; then exit 1; else
             rc=$?; test "$rc" -eq 4 || { echo "RC $rc, se esperaba 4"; exit 1; }; fi
+
+  replay-censo:
+    # The pin is only worth what its reader can refuse. This job fetches the
+    # export the census names, checks its SHA-256 before measuring anything, and
+    # recomputes every published cell: 0 identical, 1 diverged, 2 unreachable,
+    # 4 the bytes on disk are not the pinned export.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+      - name: re-derive censo.json from the export it names
+        run: python bench/replay_censo.py
