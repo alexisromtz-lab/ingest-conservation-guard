@@ -52,13 +52,17 @@ was overwritten**, by row identifier.
 
 ### Exit codes
 
-| RC | estado | meaning |
+| RC | status | meaning |
 |---|---|---|
 | `0` | `CONSERVADO` | `dominio == suma`, no collisions: the transform preserved the population |
 | `1` | `COLISION_SILENCIOSA` | two or more records share a key; the receipt names the merged ones |
+| `2` | `NO_MEDIDO` | nothing was compared (bad invocation, empty input): never a pass |
 | `4` | `RUPTURA_CONSERVACION` | a bucket is negative, the identity does not close, or the mapping you wrote is not the image of the projection |
 
-`2` is reserved for a bad invocation. There is no code that means "probably fine".
+There is no code that means "probably fine". With several targets the run's code is the
+**supremum** of the individual codes under `4 > 1 > 2 > 0` (`combinar_rc`), never `max`:
+`max(1, 2) == 2`, so an integer maximum lets a receipt that measured nothing cover a receipt that
+proved a silent merge. Ordering the codes by what they mean, not by their value, is the point.
 
 ### Auditing a real write
 

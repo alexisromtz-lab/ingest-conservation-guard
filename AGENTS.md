@@ -34,9 +34,9 @@ that only ever returns success is indistinguishable from no guard.
 ## Checks
 
 ```console
-/Users/marlene/platino-labs/.venv/bin/python -m pytest -q -p no:cacheprovider
-PYTHONPATH=src python -m ingest_conservation_guard          # demo: RC 4 (rompe a proposito)
-PYTHONPATH=src python -m ingest_conservation_guard sku      # RC 1
+python -m pytest -q -p no:cacheprovider
+PYTHONPATH=src python -m ingest_conservation_guard               # demo: RC 4, broken on purpose
+PYTHONPATH=src python -m ingest_conservation_guard sku           # RC 1
 PYTHONPATH=src python -m ingest_conservation_guard sku-completa  # RC 0
 ```
 

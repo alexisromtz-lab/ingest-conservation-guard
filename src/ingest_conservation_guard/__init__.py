@@ -16,7 +16,8 @@ That is why every bucket is counted by its own pass and why the positivity check
 is not optional.
 """
 from .motor import Colision, Recibo, auditar_mapeo, fibra, verificar_transversal
+from .rc import combinar_rc, precedencia
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __all__ = ["Colision", "Recibo", "auditar_mapeo", "fibra", "verificar_transversal",
-           "__version__"]
+           "combinar_rc", "precedencia", "__version__"]

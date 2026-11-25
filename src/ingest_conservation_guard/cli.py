@@ -1,7 +1,9 @@
 """Command line: ``ingest-conservation-guard [caso]``.
 
-The exit code is the worst receipt of the run: 0 conserved, 1 a merge, 4 a
-rupture. A tool that reports a lost record as success is worse than no tool.
+The exit code is the supremum of the run's receipts under ``4 > 1 > 2 > 0``:
+0 conserved, 1 a silent merge, 2 nothing measured, 4 a rupture. Not ``max``: an
+empty case must not hide a receipt with merges. A tool that reports a lost
+record as success is worse than no tool.
 """
 from __future__ import annotations
 
@@ -12,6 +14,7 @@ from typing import Any
 
 from .casos import caso_pacientes, caso_ruptura, caso_sku
 from .motor import auditar_mapeo
+from .rc import COLISION, RUPTURA, combinar_rc
 
 CASOS: dict[str, Any] = {
     "pacientes": caso_pacientes,
@@ -53,9 +56,13 @@ def main(argv: list[str] | None = None) -> int:
                       f" pisados={','.join(c['pisados'])}")
             for nota in d["notas"]:
                 print(f"    NOTA {nota}")
-    rc = max(d["rc"] for d in recibos)
-    if rc == 4:
+    # Supremum under 4 > 1 > 2 > 0, never max(): max(1, 2) == 2 would let a
+    # case that measured nothing hide a receipt with silent merges.
+    rc = combinar_rc(*(d["rc"] for d in recibos))
+    if rc == RUPTURA:
         print("RUPTURA: el recibo no conserva el dominio declarado", file=sys.stderr)
+    elif rc == COLISION:
+        print("COLISION: hay registros fusionados en silencio", file=sys.stderr)
     return rc
 
 
