@@ -17,8 +17,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
-      - run: python -m pip install -e .
-      - run: python -m pytest -q
+      - name: install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+      - name: unit tests
+        run: pytest -o addopts="" -q
       - name: Contract - conserved exits 0
         run: |
           python -m ingest_conservation_guard sku-completa || { echo "RC inesperado"; exit 1; }

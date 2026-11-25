@@ -20,11 +20,16 @@ classifiers = [
 ]
 dependencies = []
 
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
 [project.scripts]
 ingest-conservation-guard = "ingest_conservation_guard.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/Platino-Labs/ingest-conservation-guard"
+Homepage = "https://github.com/alexisromtz-lab/ingest-conservation-guard"
+Repository = "https://github.com/alexisromtz-lab/ingest-conservation-guard"
+Issues = "https://github.com/alexisromtz-lab/ingest-conservation-guard/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]
