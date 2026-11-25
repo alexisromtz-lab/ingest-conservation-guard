@@ -40,3 +40,28 @@ def test_modulo_ejecutable_sin_pythonpath_previo():
                           env={"PYTHONPATH": "src", "PATH": "/usr/bin:/bin"})
     assert proc.returncode == 0, proc.stderr
     assert "CONSERVADO" in proc.stdout
+
+
+def test_el_banco_audita_un_csv_y_devuelve_su_codigo(tmp_path):
+    csv_path = tmp_path / "export.csv"
+    csv_path.write_text("titulo\nCamisa Blanca\nCamisa Blanca\ncamisa-blanca\n",
+                        encoding="utf-8")
+    hecho = subprocess.run(
+        [sys.executable, "bench/auditar_csv.py", str(csv_path),
+         "--columna", "titulo", "--clave", "slug"],
+        capture_output=True, text=True, check=False)
+    assert hecho.returncode == 1, hecho.stderr
+    recibo = json.loads(hecho.stdout)
+    assert recibo["dominio"] == 3 and recibo["cubetas"]["imagen"] == 1
+    assert recibo["colisiones_por_proyeccion"] == 1
+    assert recibo["colisiones_por_repetido"] == 1
+
+
+def test_el_banco_no_mide_una_columna_inexistente(tmp_path):
+    csv_path = tmp_path / "export.csv"
+    csv_path.write_text("titulo\nuno\n", encoding="utf-8")
+    hecho = subprocess.run(
+        [sys.executable, "bench/auditar_csv.py", str(csv_path), "--columna", "sku"],
+        capture_output=True, text=True, check=False)
+    assert hecho.returncode == 2
+    assert hecho.stdout == ""

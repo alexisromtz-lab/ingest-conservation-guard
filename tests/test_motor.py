@@ -124,3 +124,34 @@ def test_lista_blanca_de_entradas_inyectiva_es_transversal():
     v = verificar_transversal(permitidos, clave_paciente)
     assert v["transversal"] is True
     assert v["nucleo"] == 0
+
+
+def test_sin_crudo_la_particion_de_la_masa_es_no_medida():
+    registros, clave, _, _ = caso_sku()
+    r = auditar_mapeo(registros, clave)
+    assert r.colisiones_por_proyeccion is None
+    assert r.colisiones_por_repetido is None
+    assert r.as_dict()["colisiones_por_proyeccion"] is None
+
+
+def test_la_masa_perdida_se_parte_en_proyeccion_y_repetido():
+    # Two identical titles are the export repeating a row; "camisa-blanca" is a
+    # different raw string that the slug folds onto the same key.
+    filas = [{"titulo": "Camisa Blanca"}, {"titulo": "Camisa Blanca"},
+             {"titulo": "camisa-blanca"}]
+    r = auditar_mapeo(filas, lambda f: slug(f["titulo"]),
+                      crudo_fn=lambda f: f["titulo"])
+    assert r.masa_perdida == 2
+    assert r.colisiones_por_proyeccion == 1
+    assert r.colisiones_por_repetido == 1
+    assert r.colisiones_por_proyeccion + r.colisiones_por_repetido == r.masa_perdida
+    assert r.rc == 1
+
+
+def test_una_exportacion_con_filas_repetidas_no_acusa_a_la_proyeccion():
+    filas = [{"titulo": "Camisa Blanca"}] * 4
+    r = auditar_mapeo(filas, lambda f: slug(f["titulo"]),
+                      crudo_fn=lambda f: f["titulo"])
+    assert r.masa_perdida == 3
+    assert r.colisiones_por_proyeccion == 0
+    assert r.colisiones_por_repetido == 3

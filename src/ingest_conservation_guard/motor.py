@@ -46,10 +46,18 @@ class Recibo:
     notas: list[str] = field(default_factory=list)
     mapeo_declarado: int | None = None
     mapeo_ajeno: bool = False
+    colisiones_por_proyeccion: int | None = None
 
     @property
     def masa_perdida(self) -> int:
         return sum(c.masa for c in self.colisiones)
+
+    @property
+    def colisiones_por_repetido(self) -> int | None:
+        """Rows lost to a raw value already present, not to the projection."""
+        if self.colisiones_por_proyeccion is None:
+            return None
+        return self.masa_perdida - self.colisiones_por_proyeccion
 
     @property
     def cubetas(self) -> dict[str, int]:
@@ -98,6 +106,8 @@ class Recibo:
             "descuadre": self.descuadre,
             "conserva": self.conserva,
             "masa_perdida": self.masa_perdida,
+            "colisiones_por_proyeccion": self.colisiones_por_proyeccion,
+            "colisiones_por_repetido": self.colisiones_por_repetido,
             "colisiones": [c.as_dict() for c in self.colisiones],
             "mapeo_declarado": self.mapeo_declarado,
             "mapeo_ajeno": self.mapeo_ajeno,
@@ -120,7 +130,8 @@ def auditar_mapeo(registros: Iterable[Any],
                   clave_fn: Callable[[Any], str],
                   validar_fn: Callable[[Any], bool] | None = None,
                   testigo_fn: Callable[[Any], str] | None = None,
-                  mapeo: dict[str, Any] | None = None) -> Recibo:
+                  mapeo: dict[str, Any] | None = None,
+                  crudo_fn: Callable[[Any], str] | None = None) -> Recibo:
     """Audits the projection ``clave_fn`` over ``registros``.
 
     ``mapeo`` is the dict the caller actually wrote. Supplying it turns the
@@ -131,6 +142,15 @@ def auditar_mapeo(registros: Iterable[Any],
     ``testigo_fn`` names a record in the receipt. Without it the receipt uses the
     position, which is stable and never ambiguous; ``list.index`` would name the
     first equal record instead of the one that was overwritten.
+
+    ``crudo_fn`` is the key *before* the projection. With it, the lost mass is
+    split in two causes that get repaired in opposite places: a member whose raw
+    value no earlier member of the same fiber carried is
+    ``colisiones_por_proyeccion`` — the projection folded two different things,
+    so the code changes; a member repeating a raw value already seen is
+    ``colisiones_por_repetido`` — the export carried the row twice, so the input
+    changes. Without it both stay ``None``: the split was not measured, and that
+    is not the same as zero.
     """
     regs = list(registros)
     if testigo_fn is None:
@@ -164,6 +184,16 @@ def auditar_mapeo(registros: Iterable[Any],
                 clave=k,
                 conservado=nombra(*miembros[0]),
                 pisados=tuple(nombra(*x) for x in miembros[1:])))
+
+    if crudo_fn is not None:
+        # Distinct raw values per fiber: every extra one is a merge the
+        # projection created, and the rest are rows the source repeated.
+        proyeccion = 0
+        for k in sorted(ledger):
+            crudos = {crudo_fn(r) for _, r in ledger[k]}
+            if len(crudos) > 1:
+                proyeccion += len(crudos) - 1
+        recibo.colisiones_por_proyeccion = proyeccion
 
     if mapeo is not None:
         recibo.mapeo_declarado = len(mapeo)
