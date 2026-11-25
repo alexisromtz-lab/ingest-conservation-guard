@@ -258,7 +258,7 @@ $ python bench/replay_censo.py
 export verificado: world-cities 1336699 B 9edb0db14c312fb2...
   identico name:plano:lower: domain=34195 image=32171 by_projection=153 by_repeated_row=1871 ...
   identico geonameid: domain=34195 image=34195 by_projection=None by_repeated_row=None ...
-REPLAY IDENTICO · 2 filas · instrumento 0.4.1 · estado MEDIDO_EN_EXPORTACION_PUBLICA
+REPLAY IDENTICO · 2 filas · instrumento 0.4.2 · estado MEDIDO_EN_EXPORTACION_PUBLICA
 ```
 
 Four verdicts, and the ladder refuses to let a milder one hide a worse one:
@@ -282,7 +282,7 @@ does not take staged filenames — edit `args` to point at your export and decla
 ```yaml
 repos:
   - repo: https://github.com/alexisromtz-lab/ingest-conservation-guard
-    rev: v0.4.1
+    rev: v0.4.2
     hooks:
       - id: ingest-conservation-guard-receipt
         args: ["--receipt", "migraciones/clientes.csv", "--clave", "telefono:digitos:ultimos10",
@@ -304,6 +304,14 @@ a real 34 195-row public export, `censo.json` pins that file by SHA-256 with the
 `tests/test_censo.py` recomputes every cell — including the output digest — whenever the export is
 on disk. It is `MEDIDO_EN_EXPORTACION_PUBLICA`, not `MEDIDO_EN_PRODUCCION`: no client migration has
 been certified yet, and the file says so.
+
+`0.4.2` makes the receipt name its author. Until now an `acta` document said what it measured, by
+which projection, over which bytes — and not which binary wrote it, so a certificate found in a
+drawer could not be traced to a version and a receipt that had aged could not be told from one that
+had been altered. Both the certificate and the per-case documents now carry `instrument` and
+`instrument_version`, stamped by the package itself. The census was re-run over the pinned 34 195-row
+export with `0.4.2` before its `instrument_version` was moved: every cell identical, which is the
+only thing that makes the new number a measurement instead of a wish.
 
 ## Limits
 

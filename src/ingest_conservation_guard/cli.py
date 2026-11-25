@@ -13,6 +13,7 @@ import pathlib
 import sys
 from typing import Any
 
+from . import __version__
 from .acta import acta, resumen
 from .casos import caso_pacientes, caso_ruptura, caso_sku
 from .motor import auditar_mapeo
@@ -33,6 +34,8 @@ def _uno(nombre: str) -> dict[str, Any]:
                            mapeo=mapeo)
     d = recibo.as_dict()
     d["caso"] = nombre
+    d["instrument"] = "ingest-conservation-guard"
+    d["instrument_version"] = __version__
     return d
 
 

@@ -23,6 +23,8 @@ import hashlib
 import io
 import json
 import unicodedata
+
+from . import __version__
 from pathlib import Path
 from typing import Any, Callable
 
@@ -152,6 +154,8 @@ def acta(ruta: Path, clave: str, crudo: str | None = None,
 
     documento: dict[str, Any] = {
         "acta": "migracion",
+        "instrument": "ingest-conservation-guard",
+        "instrument_version": __version__,
         "caso": nombre_caso or ruta.name,
         "estado": d["estado"],
         "rc": d["rc"] if perdidas == 0 else ACTA_RC_RUPTURA,
@@ -191,6 +195,7 @@ def resumen(d: dict[str, Any]) -> str:
         f"  perdidas  {d['perdidas_silenciosas']}",
         f"  salida    claves={d['salida']['claves']}  sha256={d['salida']['sha256'][:16]}...",
         f"  estado    {d['estado']}  RC={d['rc']}",
+        f"  firmado   {d.get('instrument', '?')} {d.get('instrument_version', '?')}",
     ]
     for c in d["colisiones"]:
         lineas.append(f"  COLISION  {c['clave']} conservado={c['conservado']}"

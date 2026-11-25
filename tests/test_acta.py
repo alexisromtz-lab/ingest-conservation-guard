@@ -105,3 +105,13 @@ def test_a_row_without_a_key_lands_in_its_own_bucket(tmp_path):
     assert d["ecuacion"]["sin_clave"] == 2
     assert d["ecuacion"]["imagen"] == 1
     assert d["perdidas_silenciosas"] == 0
+
+
+def test_el_acta_nombra_el_binario_que_la_escribio():
+    """Un recibo sin autor no se puede fechar: se confunde con uno alterado."""
+    from ingest_conservation_guard import __version__
+    from ingest_conservation_guard.acta import acta
+
+    documento = acta(FIXTURE, "telefono:digitos:ultimos10", "telefono")
+    assert documento["instrument"] == "ingest-conservation-guard"
+    assert documento["instrument_version"] == __version__
