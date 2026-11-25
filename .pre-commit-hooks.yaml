@@ -1,0 +1,14 @@
+# The acta audits ONE declared input, so this hook does not take staged
+# filenames: pre-commit would append them as positional arguments and the tool
+# would read them as case names. Edit `args` to point at your own export and
+# declare the projection you actually write. Exit 1 means the receipt found
+# records merged in silence; 4 means the identity does not close.
+- id: ingest-conservation-guard-receipt
+  name: migration receipt (conservation of the declared domain)
+  description: Certifies that a tabular ingest loses no row without saying so.
+  entry: ingest-conservation-guard
+  language: python
+  files: ^migraciones/.*\.(csv|json)$
+  pass_filenames: false
+  require_serial: false
+  args: ["--receipt", "migraciones/entrada.csv", "--clave", "id"]

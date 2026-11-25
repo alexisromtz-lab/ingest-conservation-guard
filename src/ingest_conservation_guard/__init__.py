@@ -18,6 +18,6 @@ is not optional.
 from .motor import Colision, Recibo, auditar_mapeo, fibra, verificar_transversal
 from .rc import combinar_rc, precedencia
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 __all__ = ["Colision", "Recibo", "auditar_mapeo", "fibra", "verificar_transversal",
            "combinar_rc", "precedencia", "__version__"]

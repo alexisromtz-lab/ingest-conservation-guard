@@ -9,9 +9,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import pathlib
 import sys
 from typing import Any
 
+from .acta import acta, resumen
 from .casos import caso_pacientes, caso_ruptura, caso_sku
 from .motor import auditar_mapeo
 from .rc import COLISION, RUPTURA, combinar_rc
@@ -38,7 +40,32 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="ingest-conservation-guard", description=__doc__)
     p.add_argument("caso", nargs="?", default="todos", choices=[*CASOS, "todos"])
     p.add_argument("--json", action="store_true", help="salida JSON determinista")
+    p.add_argument("--receipt", metavar="ARCHIVO",
+                   help="acta de migracion sobre un CSV/JSON real (CSV por extension)")
+    p.add_argument("--clave", metavar="CAMPO[:TRANS...]",
+                   help="campo y normalizadores de la clave destino, p.ej. telefono:digitos:ultimos10")
+    p.add_argument("--crudo", metavar="CAMPO[:TRANS...]",
+                   help="clave ANTES de normalizar; separa colisiones por proyeccion de filas repetidas")
+    p.add_argument("--validar", metavar="CAMPO",
+                   help="columna booleana: las filas falsas cuentan como rechazos")
+    p.add_argument("--sin-claves", action="store_true",
+                   help="omite los valores de las claves que colisionaron (datos personales)")
     args = p.parse_args(argv)
+
+    if args.receipt:
+        if not args.clave:
+            p.error("--receipt exige --clave (que proyeccion se audita debe estar declarada)")
+        documento = acta(pathlib.Path(args.receipt), args.clave, args.crudo,
+                         args.validar, con_claves=not args.sin_claves)
+        if args.json:
+            print(json.dumps(documento, indent=2, ensure_ascii=False, sort_keys=True))
+        else:
+            print(resumen(documento))
+        if documento["rc"] == RUPTURA:
+            print("RUPTURA: el acta no conserva el dominio declarado", file=sys.stderr)
+        elif documento["rc"] == COLISION:
+            print("COLISION: hay registros fusionados en silencio", file=sys.stderr)
+        return documento["rc"]
 
     nombres = list(CASOS) if args.caso == "todos" else [args.caso]
     recibos = [_uno(n) for n in nombres]

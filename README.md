@@ -162,7 +162,7 @@ key, and the split names the reason instead of leaving it to the reader.
 
 | what | value |
 |---|---|
-| tests | `33 passed` (`python -m pytest -o addopts="" -q` — the bare `-q` is already in `addopts`, and doubling it suppresses the count) |
+| tests | the count lives in CI output, never in this table. A hand-written `N passed` is stale the next commit, and nothing was reading it: `tests/test_readme.py` now fails if this file ever pins one again |
 | executable cases | 3 (patient import, catalogue sync by two projections, dropped-row write) |
 | collisions detected in the patient case | 2 of 8 rows, witnesses `A-1/A-2` and `A-4/A-5` |
 | production exports with client data audited | **NO_MEDIDO** |
@@ -170,6 +170,76 @@ key, and the split names the reason instead of leaving it to the reader.
 The last row is the honest one. These four audits are catalogue and directory exports; a client
 migration (patients, customers, appointments) has still not been run through the engine, and the
 number of losses it would find in *your* data is a measurement nobody has made yet.
+
+## Migrations: the certificate (`--receipt`)
+
+A conservation audit answers "did anything disappear". A migration needs one more thing: a document
+somebody else can check without installing this package. `--receipt` reads a real CSV or JSON
+export, applies the projection you actually write, and prints the accounting identity with both ends
+digested:
+
+```
+$ ingest-conservation-guard --receipt migracion.csv \
+      --clave telefono:digitos:ultimos10 --crudo telefono --validar activo
+ACTA DE MIGRACION  migracion.csv
+  entrada   migracion.csv  filas=6  sha256=d706d9297093104b...
+  clave     telefono:digitos:ultimos10  crudo=telefono
+  ecuacion  6 = 3 + 2 + 0 + 1 + 0
+  perdidas  0
+  salida    claves=3  sha256=8255a43e1378521d...
+  estado    COLISION_SILENCIOSA  RC=1
+  COLISION  5588881111 conservado=A-3 pisados=A-4
+  COLISION  7771234567 conservado=A-1 pisados=A-2
+```
+
+`perdidas_silenciosas` is the **residual** of that equation, computed and never asserted: a zero is
+the result of the arithmetic, not a claim in a template. `--sin-claves` withholds the values of the
+colliding keys (witnesses stay) when a key is personal data.
+
+The same six-row fixture, audited with two different declarations of "the key *before* the
+projection". Every cell below is recomputed by `tests/test_readme.py`:
+
+| projection | raw key | domain | image | by projection | by repeated row | rejects | silent losses | rc |
+|---|---|---|---|---|---|---|---|---|
+| `telefono:digitos:ultimos10` | `telefono` | 6 | 3 | 2 | 0 | 1 | 0 | 1 |
+| `telefono:digitos:ultimos10` | `nombre:plano:lower` | 6 | 3 | 0 | 2 | 1 | 0 | 1 |
+| `id` | `id` | 6 | 6 | 0 | 0 | 0 | 0 | 0 |
+
+The first two rows hold the entire argument for splitting the lost mass in two: **same rows, same
+loss, opposite repairs**. Declared against the raw phone, the two spellings of `7771234567` are one
+number written twice and the fix belongs in the projection. Declared against the normalised name,
+they are the same raw value arriving twice and the fix belongs in the export. A certificate that
+reported `2 lost` without the split would be correct and useless.
+
+Normalisers are declarative and closed: `identidad`, `strip`, `lower`, `upper`, `plano` (accents
+off), `slug`, `digitos`, `ultimos10`. A misspelt transform is a hard error, because silently
+auditing a different projection than the one the certificate names is the very failure this package
+exists to catch, one level up.
+
+### Adopting it without PyPI
+
+`.pre-commit-hooks.yaml` is in the repository root. The hook audits **one declared input**, so it
+does not take staged filenames — edit `args` to point at your export and declare your projection:
+
+```yaml
+repos:
+  - repo: https://github.com/alexisromtz-lab/ingest-conservation-guard
+    rev: v0.4.0
+    hooks:
+      - id: ingest-conservation-guard-receipt
+        args: ["--receipt", "migraciones/clientes.csv", "--clave", "telefono:digitos:ultimos10",
+               "--crudo", "telefono", "--json"]
+```
+
+Exit `1` stops the commit because records merged in silence; exit `4` stops it because the identity
+does not close.
+
+## Version notes
+
+`0.4.0` adds `--receipt` (the migration certificate above, with SHA-256 of both ends and the split
+of lost mass into projection and repeated row), `.pre-commit-hooks.yaml`, and `tests/test_readme.py`,
+which recomputes the migration table and the per-case exit codes and fails when this file disagrees
+with the engine. The engine itself is unchanged: same buckets, same three codes, same supremum.
 
 ## Limits
 
