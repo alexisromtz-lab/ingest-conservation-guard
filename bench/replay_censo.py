@@ -34,12 +34,16 @@ RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ / "src"))
 
 from ingest_conservation_guard.acta import acta  # noqa: E402
+from ingest_conservation_guard.rc import (  # noqa: E402
+    COLISION, RUPTURA, VACIO, combinar_rc)
 
 CENSO = RAIZ / "censo.json"
 UA = {"User-Agent": "ingest-conservation-guard-censo-replay/1"}
 
-OK, DIVERGE, NO_MEDIDO, RUPTURA = 0, 1, 2, 4
-ORDEN = {OK: 0, NO_MEDIDO: 1, DIVERGE: 2, RUPTURA: 3}
+# The verdicts are this package's own codes, not a private ladder: a divergent
+# cell is a COLISION, a missing export is VACIO, a broken pin is RUPTURA, and the
+# operator is the one the CLI already uses so two rows compose as they do there.
+OK, DIVERGE, NO_MEDIDO = 0, COLISION, VACIO
 VEREDICTO = {OK: "REPLAY IDENTICO", DIVERGE: "REPLAY CON DIVERGENCIA",
              NO_MEDIDO: "NO_MEDIDO", RUPTURA: "PIN ROTO"}
 
@@ -113,7 +117,7 @@ def main(argv: list[str] | None = None) -> int:
             if difs:
                 print(f"  DIVERGE {fila['projection']}: "
                       + ", ".join(f"{k} medido={m} pin={p}" for k, (m, p) in difs.items()))
-                peor = max((peor, DIVERGE), key=ORDEN.get)
+                peor = combinar_rc(peor, DIVERGE)
             else:
                 print(f"  identico {fila['projection']}: "
                       + " ".join(f"{k}={v}" for k, v in medidas.items()))
