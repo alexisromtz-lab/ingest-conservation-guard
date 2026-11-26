@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ingest-conservation-guard"
-version = "0.4.3"
+version = "0.4.4"
 description = "Receipts of bucket conservation for data ingestion: dominio == imagen + rechazos + sin_clave + colisiones"
 readme = "README.md"
 requires-python = ">=3.11"

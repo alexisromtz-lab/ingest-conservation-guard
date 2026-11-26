@@ -312,6 +312,31 @@ checker calls conserved.
 computes the composite equation by telescoping — `dominio(1) = imagen(n) + sum(restos)` — so a chain
 of conserving acts is judged as one pipeline and never as a list of green lights.
 
+### Verifying a receipt without our code
+
+A certificate only its issuer can check is a claim, not a certificate. Every number the `acta`
+publishes is confirmable with `shasum`, `wc -l` and a sum — no install, no trust in this package:
+
+| what | command | measured |
+|---|---|---|
+| the input is the one certified | `shasum -a 256 tests/fixtures/migracion.csv` | `d706d9297093104b…` = `entrada.sha256` |
+| the output is the certified one | `shasum -a 256 paso1.csv` | `ede784ce0813c547…` = `salida.sha256_archivo` |
+| the output is the whole image | `wc -l < paso1.csv` | `4` = 3 claves + cabecera |
+| the act closes | the six terms of `ecuacion` | `6 = 3 + 2 + 1 + 0 + 0` |
+
+```console
+$ shasum -a 256 tests/fixtures/migracion.csv paso1.csv
+d706d9297093104b22c20301e2e74f92ff83f2c5352c6ea6e4326c7108935581  tests/fixtures/migracion.csv
+ede784ce0813c547178cf900cf1e3e9fa5b963f38b83c03ffb0803d03105b042  paso1.csv
+$ wc -l < paso1.csv
+4
+```
+
+What the auditor gets for free: the file in their hands is byte-for-byte the one that was certified,
+and it holds exactly the rows the receipt says it holds. What `shasum` does **not** prove is that
+`dominio` was counted over an undrained population — bytes vouch for identity, not for the census.
+For that, `conservation-ledger` composes several receipts and closes the seam between them.
+
 ### Adopting it without PyPI
 
 `.pre-commit-hooks.yaml` is in the repository root. The hook audits **one declared input**, so it
@@ -320,7 +345,7 @@ does not take staged filenames — edit `args` to point at your export and decla
 ```yaml
 repos:
   - repo: https://github.com/alexisromtz-lab/ingest-conservation-guard
-    rev: v0.4.3
+    rev: v0.4.4
     hooks:
       - id: ingest-conservation-guard-receipt
         args: ["--receipt", "migraciones/clientes.csv", "--clave", "telefono:digitos:ultimos10",
@@ -357,6 +382,13 @@ two different subjects. `--export` writes the image as CSV and publishes `salida
 `salida.sha256_archivo`, read back from disk. An act that produced no artifact publishes neither
 key: `NO_MEDIDO`, never a zero. The census was re-run over the pinned 34 195-row export with `0.4.3`
 before `instrument_version` moved, and every cell reproduced.
+
+`0.4.4` publishes who can check the certificate: `### Verifying a receipt without our code` names
+the three commands — two `shasum` calls and a `wc -l` — that confirm both digests and the row count
+on a machine with none of our packages, and `tests/test_verificar_sin_codigo.py` measures all three
+cells with the system tools instead of with the engine. No behaviour changed; the census was re-run
+over the pinned export with `0.4.4` before `instrument_version` moved, and both rows reproduced to
+the digest of their output.
 
 ## Limits
 
