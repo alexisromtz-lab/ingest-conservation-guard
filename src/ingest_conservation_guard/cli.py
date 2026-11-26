@@ -17,7 +17,7 @@ from . import __version__
 from .acta import acta, resumen
 from .casos import caso_pacientes, caso_ruptura, caso_sku
 from .motor import auditar_mapeo
-from .rc import COLISION, RUPTURA, combinar_rc
+from .rc import COLISION, RUPTURA, VACIO, combinar_rc
 
 CASOS: dict[str, Any] = {
     "pacientes": caso_pacientes,
@@ -74,6 +74,9 @@ def main(argv: list[str] | None = None) -> int:
             print("RUPTURA: el acta no conserva el dominio declarado", file=sys.stderr)
         elif documento["rc"] == COLISION:
             print("COLISION: hay registros fusionados en silencio", file=sys.stderr)
+        elif documento["rc"] == VACIO:
+            print("NO_MEDIDO: el dominio declarado esta vacio; no hay unidades que "
+                  "conservar y el acta no certifica nada", file=sys.stderr)
         return documento["rc"]
 
     nombres = list(CASOS) if args.caso == "todos" else [args.caso]

@@ -18,6 +18,7 @@ from ingest_conservation_guard.acta import (
     sha256_de,
 )
 from ingest_conservation_guard.motor import COLISION, CONSERVADO
+from ingest_conservation_guard.rc import VACIO
 
 FIXTURE = Path(__file__).parent / "fixtures" / "migracion.csv"
 
@@ -167,3 +168,41 @@ def test_la_salida_de_un_acto_es_la_entrada_del_siguiente(tmp_path):
     resto_a = sum(v for k, v in a["ecuacion"].items() if k not in ("dominio", "imagen"))
     resto_b = sum(v for k, v in b["ecuacion"].items() if k not in ("dominio", "imagen"))
     assert a["ecuacion"]["dominio"] == b["ecuacion"]["imagen"] + resto_a + resto_b
+
+
+VACIO_FIXTURE = Path(__file__).parent / "fixtures" / "export-vacio.csv"
+
+
+def test_un_dominio_vacio_cierra_la_ecuacion_y_no_certifica_nada():
+    """0 = 0 + 0 + 0 + 0 + 0 is arithmetic, not an audit.
+
+    The residual is zero and every bucket is zero, so a receipt that only
+    published the sum would report CONSERVADO over an empty population. The
+    boolean is the conjunction of three factors and the failing one is named.
+    """
+    d = acta(VACIO_FIXTURE, "telefono:digitos:ultimos10", "telefono", validar="activo")
+    assert d["perdidas_silenciosas"] == 0
+    assert d["conserva_condiciones"] == {
+        "cubetas_no_negativas": True,
+        "dominio_no_vacio": False,
+        "residuo_cero": True,
+    }
+    assert d["conserva"] is False
+    assert (d["rc"], d["estado"]) == (VACIO, "NO_MEDIDO")
+    assert "no conserva  dominio_no_vacio" in resumen(d)
+
+
+def test_la_ley_se_rehace_desde_los_numeros_publicados():
+    """`perdidas_silenciosas` es el residuo de las cubetas *publicadas*.
+
+    Dos caminos: la ecuacion suma sus familias, las cubetas se cuentan cada una
+    en su pasada. Si alguna vez dejan de cuadrar, el recibo miente sobre si
+    mismo y nadie lo notaria leyendo solo una de las dos lineas.
+    """
+    for clave, crudo in [("telefono:digitos:ultimos10", "telefono"),
+                         ("telefono:digitos:ultimos10", "nombre:plano:lower"),
+                         ("id", None)]:
+        d = acta(FIXTURE, clave, crudo=crudo, validar="activo" if crudo else None)
+        assert d["perdidas_silenciosas"] == \
+            d["entrada"]["filas"] - sum(d["cubetas"].values())
+        assert d["conserva"] == all(d["conserva_condiciones"].values())

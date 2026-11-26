@@ -12,10 +12,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Callable, Iterable
 
-CONSERVADO, COLISION, RUPTURA = 0, 1, 4
+from .rc import COLISION, CONSERVADO, RUPTURA, VACIO
+
 ESTADOS = {
     CONSERVADO: "CONSERVADO",
     COLISION: "COLISION_SILENCIOSA",
+    VACIO: "NO_MEDIDO",
     RUPTURA: "RUPTURA_CONSERVACION",
 }
 
@@ -77,13 +79,31 @@ class Recibo:
         return {k: v for k, v in self.cubetas.items() if v < 0}
 
     @property
+    def condiciones(self) -> dict[str, bool]:
+        """The three factors of ``conserva``; the boolean is their conjunction.
+
+        Published separately so a reader can name *which* factor failed: a bare
+        ``conserva: false`` next to a closing equation is indistinguishable from
+        a corrupted receipt.
+        """
+        return {
+            "cubetas_no_negativas": not self.cubetas_negativas,
+            "dominio_no_vacio": self.dominio > 0,
+            "residuo_cero": self.descuadre == 0,
+        }
+
+    @property
     def conserva(self) -> bool:
-        return self.descuadre == 0 and not self.cubetas_negativas
+        return all(self.condiciones.values())
 
     @property
     def rc(self) -> int:
         if self.cubetas_negativas or self.descuadre != 0:
             return RUPTURA
+        if self.dominio == 0:
+            # 0 = 0 closes and certifies nothing: the identity holds over an
+            # empty population, and an empty population has no units to keep.
+            return VACIO
         if self.mapeo_declarado is not None and (
                 self.mapeo_ajeno or self.mapeo_declarado != self.imagen):
             return RUPTURA
@@ -105,6 +125,7 @@ class Recibo:
             "suma": self.suma,
             "descuadre": self.descuadre,
             "conserva": self.conserva,
+            "condiciones": self.condiciones,
             "masa_perdida": self.masa_perdida,
             "colisiones_por_proyeccion": self.colisiones_por_proyeccion,
             "colisiones_por_repetido": self.colisiones_por_repetido,

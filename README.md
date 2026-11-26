@@ -216,6 +216,53 @@ off), `slug`, `digitos`, `ultimos10`. A misspelt transform is a hard error, beca
 auditing a different projection than the one the certificate names is the very failure this package
 exists to catch, one level up.
 
+### An empty domain certifies nothing: `0 = 0` is not a pass
+
+`conserva` is not a flag this instrument sets. It is the conjunction of three named factors, and the
+receipt publishes the boolean **and** the factors, so one is recomputed from the other by a reader
+who never installs the package:
+
+```
+conserva = cubetas_no_negativas ∧ dominio_no_vacio ∧ residuo_cero
+```
+
+Hand it an export with a header and no rows and the equation closes *exactly*: `0 = 0 + 0 + 0 + 0 +
+0`, residual zero, every bucket zero. A tool that answered `CONSERVADO` here would be signing a
+certificate over an empty population — the identity holds because there was nothing to hold. The
+factor that fails is `dominio_no_vacio`, the receipt names it on its own line, and the exit code is
+`2` (`NO_MEDIDO`), never `0`:
+
+```console
+$ ingest-conservation-guard --receipt tests/fixtures/export-vacio.csv \
+      --clave telefono:digitos:ultimos10 --crudo telefono --validar activo
+ACTA DE MIGRACION  export-vacio.csv
+  entrada   export-vacio.csv  filas=0  sha256=a6147dcb722a4b63...
+  clave     telefono:digitos:ultimos10  crudo=telefono
+  ecuacion  0 = 0 + 0 + 0 + 0 + 0
+  perdidas  0
+  salida    claves=0  sha256=44136fa355b3678a...
+  no conserva  dominio_no_vacio
+  estado    NO_MEDIDO  RC=2
+  firmado   ingest-conservation-guard 0.4.5
+NO_MEDIDO: el dominio declarado esta vacio; no hay unidades que conservar y el acta no certifica nada
+```
+
+The same JSON, read with `jq` alone — no Python, no wheel, no network — re-derives the boolean from
+the factors and names the one that failed. `ley true` is the receipt obeying its own schema:
+
+```console
+$ ingest-conservation-guard --receipt tests/fixtures/export-vacio.csv \
+      --clave telefono:digitos:ultimos10 --crudo telefono --json 2>/dev/null \
+    | jq -r '"ley \(.conserva == ([.conserva_condiciones[]] | all)) · conserva \(.conserva) · falla: \(.conserva_condiciones | to_entries | map(select(.value | not)) | map(.key) | join(" ")) · rc \(.rc) \(.estado)"'
+ley true · conserva false · falla: dominio_no_vacio · rc 2 NO_MEDIDO
+```
+
+A producer on the client's side implements the same three names. The verifier in
+[`conservation-ledger`](https://github.com/alexisromtz-lab/conservation-ledger) reads a receipt with
+this shape and reaches `VACIO`/`2` on its own, without knowing which instrument wrote it — the two
+packages agree because both derive the same conjunction, not because either one knows the other's
+name.
+
 ### Measured on a real export, not on a fixture
 
 The tables above are fixtures, because a certificate has to be cheap to reproduce. This one is
@@ -358,7 +405,7 @@ does not take staged filenames — edit `args` to point at your export and decla
 ```yaml
 repos:
   - repo: https://github.com/alexisromtz-lab/ingest-conservation-guard
-    rev: v0.4.4
+    rev: v0.4.5
     hooks:
       - id: ingest-conservation-guard-receipt
         args: ["--receipt", "migraciones/clientes.csv", "--clave", "telefono:digitos:ultimos10",

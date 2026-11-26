@@ -35,7 +35,7 @@ from . import __version__
 from pathlib import Path
 from typing import Any, Callable
 
-from .motor import auditar_mapeo
+from .motor import ESTADOS, auditar_mapeo
 
 ACTA_RC_RUPTURA = 4
 
@@ -178,19 +178,27 @@ def acta(ruta: Path, clave: str, crudo: str | None = None,
             "sin_clave": d["cubetas"]["sin_clave"],
         }
 
+    condiciones = {
+        "cubetas_no_negativas": not [v for v in d["cubetas"].values() if v < 0],
+        "dominio_no_vacio": recibos.dominio > 0,
+        "residuo_cero": perdidas == 0,
+    }
+    rc = d["rc"] if perdidas == 0 else ACTA_RC_RUPTURA
+
     documento: dict[str, Any] = {
         "acta": "migracion",
         "instrument": "ingest-conservation-guard",
         "instrument_version": __version__,
         "caso": nombre_caso or ruta.name,
-        "estado": d["estado"],
-        "rc": d["rc"] if perdidas == 0 else ACTA_RC_RUPTURA,
+        "estado": ESTADOS[rc],
+        "rc": rc,
         "entrada": {"archivo": ruta.name, "sha256": sha256_de(ruta), "filas": recibos.dominio},
         "proyeccion": {"clave": clave, "crudo": crudo, "validar": validar},
         "ecuacion": ecuacion,
         "cubetas": d["cubetas"],
         "perdidas_silenciosas": perdidas,
-        "conserva": perdidas == 0 and d["conserva"],
+        "conserva": all(condiciones.values()),
+        "conserva_condiciones": condiciones,
         "salida": {"claves": len(imagen), "sha256": sha256_de_json(imagen)},
         "colisiones": d["colisiones"] if con_claves else [
             {"clave": "<omitida>", "conservado": c["conservado"], "pisados": c["pisados"]}
@@ -225,6 +233,11 @@ def resumen(d: dict[str, Any]) -> str:
     lineas += [
         f"  perdidas  {d['perdidas_silenciosas']}",
         f"  salida    claves={d['salida']['claves']}  sha256={d['salida']['sha256'][:16]}...",
+    ]
+    if not d["conserva"]:
+        fallan = " ".join(k for k, v in d["conserva_condiciones"].items() if not v)
+        lineas.append(f"  no conserva  {fallan}")
+    lineas += [
         f"  estado    {d['estado']}  RC={d['rc']}",
         f"  firmado   {d.get('instrument', '?')} {d.get('instrument_version', '?')}",
     ]
