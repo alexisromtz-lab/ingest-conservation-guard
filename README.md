@@ -337,6 +337,19 @@ and it holds exactly the rows the receipt says it holds. What `shasum` does **no
 `dominio` was counted over an undrained population — bytes vouch for identity, not for the census.
 For that, `conservation-ledger` composes several receipts and closes the seam between them.
 
+### Why `--export` is not optional
+
+A receipt describes two populations: what it **declares** (digests, counts, identities) and the
+**file** it wrote. Without `--export` the second one does not exist
+(`test_sin_export_la_salida_no_nombra_ningun_archivo`), and no downstream verifier can invent it.
+The consequence is measured, not argued — in `conservation-ledger` v0.2.3 the same chain
+gets exit `0` from the receipt-only composer and exit `2` from `verify.sh`, which prints
+`COBERTURA nivel2=1/2 actos` because it must open every artifact to certify one
+(`test_el_veredicto_no_colapsa_dos_poblaciones`). Both programs are right; only one of them can see
+the file, and only the client decides which answer they need. If a migration has to be auditable by
+someone who does not trust you, export: the certificate you hand over is the one whose rows they can
+count themselves.
+
 ### Adopting it without PyPI
 
 `.pre-commit-hooks.yaml` is in the repository root. The hook audits **one declared input**, so it
