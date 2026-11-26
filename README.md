@@ -25,10 +25,16 @@ toda cubeta >= 0
 
 ## Install
 
+Zero dependencies, Python >= 3.11. The command points at the tree, not at a
+registry, so nothing has to be published first:
+
 ```console
-pip install ingest-conservation-guard      # zero dependencies, Python >= 3.11
-ingest-conservation-guard pacientes        # or: python -m ingest_conservation_guard
+uvx --from git+https://github.com/alexisromtz-lab/ingest-conservation-guard ingest-conservation-guard pacientes
 ```
+
+`pip install ingest-conservation-guard` once that name is on PyPI; the command
+above does not change when it is. Inside a clone, `python -m
+ingest_conservation_guard` is the same entry point.
 
 ## Use
 
@@ -46,6 +52,8 @@ pacientes    COLISION_SILENCIOSA    RC=1  dominio=8 = imagen=4 + rechazos=2 + si
     COLISION clave=ana-ruiz|7775550199 conservado=A-4 pisados=A-5
     COLISION clave=jose-ramirez|7771234567 conservado=A-1 pisados=A-2
 ```
+
+The `COLISION: …` notice goes to `stderr`; the table is the receipt on `stdout`.
 
 The witness is the point: not "there were collisions", but **who survived and who was
 overwritten**, by row identifier.
