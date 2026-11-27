@@ -44,3 +44,12 @@ def test_las_dos_superficies_de_cita_coinciden_en_el_titulo():
 
 def test_las_dos_superficies_señalan_el_mismo_repositorio():
     assert _escalar_cff("repository-code") == ZENODO["related_identifiers"][0]["identifier"]
+
+
+def test_el_doi_acuñado_se_nombra_en_las_dos_superficies():
+    """El DOI de una versión queda fijado al depositar: uno viejo cita a un hermano invisible."""
+    doi = _escalar_cff("doi")
+    assert re.fullmatch(r"10\.5281/zenodo\.\d+", doi), "CITATION.cff no declara un DOI de Zenodo"
+    nombrados = set(re.findall(r"10\.5281/zenodo\.\d+",
+                               (RAIZ / "README.md").read_text(encoding="utf-8")))
+    assert nombrados == {doi}, "el README nombra un DOI que la cita no declara"

@@ -462,6 +462,12 @@ the digest of their output.
   query before the audit are outside its universe and are reported as such
   (`NO_MEDIDO`), never as zero.
 
+## Citar
+
+La versión 0.5.0 está depositada en Zenodo: `10.5281/zenodo.24575087`. `CITATION.cff`
+lleva el mismo identificador, y `tests/test_cita.py` falla si las dos superficies
+discrepan.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
