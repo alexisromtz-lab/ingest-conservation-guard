@@ -1,0 +1,31 @@
+{
+  "title": "ingest-conservation-guard: receipts of bucket conservation for data ingestion",
+  "description": "<p>Schema validation tells you whether one row is well formed; nothing tells you whether the set survived the transform. This package emits receipts of bucket conservation for data ingestion, migrations and catalogue sync, holding the identity dominio == imagen + rechazos + sin_clave + colisiones. Every bucket is counted by its own pass over the input and never derived from the others, because a derived bucket closes in the integers even when the counts are incompatible (68 + 0 + (-1) = 67). Exit codes are a contract: 0 conserved, 1 merged, 4 broken, and a guard that only ever returns success is indistinguishable from no guard. Zero dependencies, standard library only; receipts are deterministic and replayable without the wheel.</p>",
+  "upload_type": "software",
+  "license": "MIT",
+  "access_right": "open",
+  "version": "0.5.0",
+  "publication_date": "2026-11-26",
+  "creators": [
+    {
+      "name": "Román Martínez, José Alexis",
+      "orcid": "0009-0001-9116-075X"
+    }
+  ],
+  "keywords": [
+    "data-ingestion",
+    "etl",
+    "migration",
+    "conservation",
+    "audit",
+    "pii"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/alexisromtz-lab/ingest-conservation-guard",
+      "relation": "isSupplementTo",
+      "scheme": "url"
+    }
+  ],
+  "notes": "Deposited from https://github.com/alexisromtz-lab/ingest-conservation-guard at tag v0.5.0."
+}

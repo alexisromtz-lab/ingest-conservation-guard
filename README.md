@@ -243,7 +243,7 @@ ACTA DE MIGRACION  export-vacio.csv
   salida    claves=0  sha256=44136fa355b3678a...
   no conserva  dominio_no_vacio
   estado    NO_MEDIDO  RC=2
-  firmado   ingest-conservation-guard 0.4.5
+  firmado   ingest-conservation-guard 0.5.0
 NO_MEDIDO: el dominio declarado esta vacio; no hay unidades que conservar y el acta no certifica nada
 ```
 
@@ -405,7 +405,7 @@ does not take staged filenames — edit `args` to point at your export and decla
 ```yaml
 repos:
   - repo: https://github.com/alexisromtz-lab/ingest-conservation-guard
-    rev: v0.4.5
+    rev: v0.5.0
     hooks:
       - id: ingest-conservation-guard-receipt
         args: ["--receipt", "migraciones/clientes.csv", "--clave", "telefono:digitos:ultimos10",

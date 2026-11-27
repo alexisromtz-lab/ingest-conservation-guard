@@ -1,0 +1,29 @@
+cff-version: 1.2.0
+message: "A receipt you cannot reproduce is an opinion. Cite the version that produced the one you kept."
+title: "ingest-conservation-guard: receipts of bucket conservation for data ingestion"
+abstract: >-
+  Schema validation tells you whether one row is well formed; nothing tells you whether the
+  set survived the transform. This package emits receipts of bucket conservation for data
+  ingestion, migrations and catalogue sync, holding the identity
+  dominio == imagen + rechazos + sin_clave + colisiones. Every bucket is counted by its own
+  pass over the input and never derived from the others, because a derived bucket closes in
+  the integers even when the counts are incompatible (68 + 0 + (-1) = 67). Exit codes are a
+  contract: 0 conserved, 1 merged, 4 broken, and a guard that only ever returns success is
+  indistinguishable from no guard. Zero dependencies, standard library only; receipts are
+  deterministic and replayable without the wheel.
+authors:
+  - family-names: "Román Martínez"
+    given-names: "José Alexis"
+    orcid: "https://orcid.org/0009-0001-9116-075X"
+type: software
+license: MIT
+repository-code: "https://github.com/alexisromtz-lab/ingest-conservation-guard"
+version: "0.5.0"
+date-released: "2026-11-26"
+keywords:
+  - data-ingestion
+  - etl
+  - migration
+  - conservation
+  - audit
+  - pii

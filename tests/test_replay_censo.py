@@ -66,3 +66,38 @@ def test_a_ruptured_pin_stops_before_measuring(tmp_path: Path) -> None:
     rc, salida = _correr(otro, censo)
     assert rc == 4, salida
     assert "RUPTURA" in salida and "0 filas medidas" in salida
+
+
+def test_the_writer_declares_the_running_instrument_version(tmp_path: Path) -> None:
+    """The census names the instrument that produced it, so bumping the package
+    must move that name — and the only sanctioned way is to measure again."""
+    from ingest_conservation_guard import __version__
+
+    censo = _censo_fixture(tmp_path)
+    antes = json.loads(censo.read_text())
+    p = subprocess.run([sys.executable, str(SCRIPT), "--csv", str(CSV),
+                        "--censo", str(censo), "--escribir"],
+                       capture_output=True, text=True)
+    assert p.returncode == 0, p.stdout + p.stderr
+    assert __version__ in p.stdout, p.stdout
+    despues = json.loads(censo.read_text())
+    assert despues["instrument_version"] == __version__
+    assert despues["status"] == "MEDIDO_EN_FIXTURE"
+    assert despues["rows"] == antes["rows"]
+    assert despues["dataset"] == antes["dataset"]
+
+
+def test_the_writer_refuses_a_divergent_census(tmp_path: Path) -> None:
+    """A writer that would rewrite the pin to match a divergence destroys the
+    only evidence the divergence ever existed."""
+    censo = _censo_fixture(tmp_path)
+    datos = json.loads(censo.read_text())
+    datos["rows"][0]["image"] += 1
+    censo.write_text(json.dumps(datos, indent=2), encoding="utf-8")
+    antes = censo.read_text()
+    p = subprocess.run([sys.executable, str(SCRIPT), "--csv", str(CSV),
+                        "--censo", str(censo), "--escribir"],
+                       capture_output=True, text=True)
+    assert p.returncode == 1, p.stdout + p.stderr
+    assert "ESCRITURA NEGADA" in p.stdout
+    assert censo.read_text() == antes

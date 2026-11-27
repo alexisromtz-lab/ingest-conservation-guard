@@ -8,6 +8,7 @@ table -- output digest included.
     python bench/replay_censo.py                  # temp dir, deleted at the end
     python bench/replay_censo.py --dir /tmp/censo --keep
     python bench/replay_censo.py --csv local.csv  # no network
+    python bench/replay_censo.py --escribir       # re-derive and write the census back
 
 Exit codes follow the ladder the package already uses, extended with the case
 where the premise itself broke:
@@ -21,6 +22,7 @@ where the premise itself broke:
 from __future__ import annotations
 
 import argparse
+import datetime
 import hashlib
 import json
 import shutil
@@ -34,6 +36,7 @@ RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ / "src"))
 
 from ingest_conservation_guard.acta import acta  # noqa: E402
+from ingest_conservation_guard import __version__  # noqa: E402
 from ingest_conservation_guard.rc import (  # noqa: E402
     COLISION, RUPTURA, VACIO, combinar_rc)
 
@@ -84,6 +87,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--keep", action="store_true", help="do not delete the cache")
     ap.add_argument("--csv", help="use this file instead of downloading the pinned one")
     ap.add_argument("--censo", help="read this census file instead of ./censo.json")
+    ap.add_argument("--escribir", action="store_true",
+                    help="write the measured rows and the running instrument version back")
     a = ap.parse_args(argv)
 
     censo = json.loads(Path(a.censo or CENSO).read_text(encoding="utf-8"))
@@ -111,8 +116,12 @@ def main(argv: list[str] | None = None) -> int:
         print(f"export verificado: {datos['name']} {datos['bytes']} B {real[:16]}...")
 
         peor = OK
+        medidas_por_fila = []
         for fila in censo["rows"]:
             medidas = _medir(ruta, fila)
+            nueva = {"projection": fila["projection"], "raw_key": fila["raw_key"]}
+            nueva.update({k: medidas[k] for k in fila if k in medidas})
+            medidas_por_fila.append(nueva)
             difs = {k: (medidas[k], fila.get(k)) for k in medidas if medidas[k] != fila.get(k)}
             if difs:
                 print(f"  DIVERGE {fila['projection']}: "
@@ -122,8 +131,27 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"  identico {fila['projection']}: "
                       + " ".join(f"{k}={v}" for k, v in medidas.items()))
 
+        if a.escribir:
+            if peor != OK:
+                print("  ESCRITURA NEGADA: un censo divergente no se escribe; "
+                      "se mide, o se declara la ruptura del pin")
+            else:
+                destino = Path(a.censo or CENSO)
+                nuevo = dict(censo)
+                nuevo["instrument_version"] = __version__
+                nuevo["measured_at"] = datetime.date.today().isoformat()
+                nuevo["status"] = ("MEDIDO_EN_FIXTURE" if a.csv
+                                   else "MEDIDO_EN_EXPORTACION_PUBLICA")
+                nuevo["rows"] = medidas_por_fila
+                destino.write_text(json.dumps(nuevo, indent=2, ensure_ascii=False) + "\n",
+                                   encoding="utf-8")
+                print(f"  ESCRITO {destino} · instrumento {__version__}"
+                      f" · {len(medidas_por_fila)} filas")
+
+        pineada = censo["instrument_version"]
+        deriva = "" if pineada == __version__ else f" (censo pineado a {pineada})"
         print(f"\n{VEREDICTO[peor]} · {len(censo['rows'])} filas"
-              f" · instrumento {censo['instrument_version']}"
+              f" · instrumento {__version__}{deriva}"
               f" · estado {censo['status']}")
         return peor
     finally:
